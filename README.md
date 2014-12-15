@@ -13,6 +13,8 @@ $ git clone https://github.com/mkulumadzi/mediawiki-hana.git
 
 Add the mediawiki-hana /bin directory to $PATH (for example, by editing .bashrc):
 
-```VIM ~/.bashrc
+```shell
+$ vim ./bashrc
+
 export PATH="$PATH:$HOME/[path to mediawiki-hana]/bin"
 ```
