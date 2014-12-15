@@ -1,0 +1,69 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    addressable (2.3.6)
+    ansi (1.4.3)
+    builder (3.2.2)
+    coderay (1.1.0)
+    crack (0.4.2)
+      safe_yaml (~> 1.0.0)
+    expression_parser (0.9.0)
+    hashie (3.3.2)
+    httparty (0.13.3)
+      json (~> 1.8)
+      multi_xml (>= 0.5.2)
+    json (1.8.1)
+    mediawiki-keiki (1.0.0)
+      httparty (~> 0.13.3)
+      minitest-reporters (~> 0.14.24)
+      nokogiri (~> 1.6.5)
+      pry (~> 0.10.1)
+      rake (~> 10.4.2)
+      turn (~> 0.9.7)
+      vcr (~> 2.9.3)
+      webmock (~> 1.20.4)
+      wikicloth (~> 0.8.1)
+    method_source (0.8.2)
+    mini_portile (0.6.1)
+    minitest (4.7.5)
+    minitest-reporters (0.14.24)
+      ansi
+      builder
+      minitest (>= 2.12, < 5.0)
+      powerbar
+    multi_xml (0.5.5)
+    nokogiri (1.6.5)
+      mini_portile (~> 0.6.0)
+    powerbar (1.0.11)
+      ansi (~> 1.4.0)
+      hashie (>= 1.1.0)
+    pry (0.10.1)
+      coderay (~> 1.1.0)
+      method_source (~> 0.8.1)
+      slop (~> 3.4)
+    rake (10.4.2)
+    rinku (1.7.3)
+    safe_yaml (1.0.4)
+    slop (3.6.0)
+    turn (0.9.7)
+      ansi
+      minitest (~> 4)
+    vcr (2.9.3)
+    webmock (1.20.4)
+      addressable (>= 2.3.6)
+      crack (>= 0.3.2)
+    wikicloth (0.8.1)
+      builder
+      expression_parser
+      rinku
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  mediawiki-keiki
+  minitest-reporters
+  pry
+  rake
+  turn
+  webmock
