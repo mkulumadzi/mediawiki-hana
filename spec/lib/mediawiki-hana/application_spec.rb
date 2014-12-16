@@ -24,14 +24,14 @@ describe Application do
 				application.params[:render_mode].must_equal :text
 			end
 
-			it "must set the mode to :terminal if the --terminal option is given" do
-				application = Application.new(['Main Page', '--terminal'])
-				application.params[:render_mode].must_equal :terminal
-			end
-
-			it "must set the mode to json if the --json option is given" do
+			it "must set the mode to :json if the --json option is given" do
 				application = Application.new(['Main Page', '--json'])
 				application.params[:render_mode].must_equal :json
+			end
+
+			it "must set the mode to :csv if the --csv option is given" do
+				application = Application.new(['Main Page', '--csv'])
+				application.params[:render_mode].must_equal :csv
 			end
 
 			it "must set the output file if the -o option is given" do
@@ -71,7 +71,7 @@ describe Application do
 		end
 
 		it "must store the remaining parameters as the search string" do
-			application = Application.new(['Main Page', '--terminal'])
+			application = Application.new(['Main Page', '--text'])
 			application.search_string.must_equal "Main Page"
 		end
 
@@ -79,7 +79,7 @@ describe Application do
 
 	describe "get MediaQuery" do
 
-		let(:application) {Application.new(['Main Page', '--terminal'])}
+		let(:application) {Application.new(['Main Page', '--text'])}
 
 		it "must get a valid MediaWiki query object" do
 			application.wiki_query.must_be_instance_of MediaWiki::Query
@@ -95,7 +95,7 @@ describe Application do
 
 		describe "render to the terminal" do
 
-			let(:application) { Application.new(['Main Page', '--terminal'])}
+			let(:application) { Application.new(['Main Page', '--text'])}
 
 			before do
 				$stdout = StringIO.new
@@ -105,6 +105,10 @@ describe Application do
 
 			it "must have a render method" do
 				application.must_respond_to :render
+			end
+
+			it "must have an output method" do
+				application.must_respond_to :output
 			end
 
 			it "must print the search string on the first line" do
@@ -173,6 +177,36 @@ describe Application do
 			# To Do: Do a better job of testing for JSON...
 			it "must save the query result to the file" do
 				@result.index("{").must_be_instance_of Fixnum
+			end
+
+		end
+
+		describe "render to a csv file" do
+
+			let(:application) { Application.new(['Main Page', '--csv', '-o', 'data/output.csv']) }
+
+			before do
+				application.render
+				@result = []
+
+				File.open('data/output.csv', 'r') do |f|
+					f.each_line do |line|
+						@result << line.chomp
+					end
+				end
+
+			end
+
+			after do
+				File.delete('data/output.csv')
+			end
+
+			it "must include the column headers on the first line" do
+				@result[0].must_equal "'Search string', 'Page title returned', 'Summary'"
+			end
+
+			it "must list the search string, title and the summary for the page" do
+				@result[1].match(/Main Page(.*)Main Page/).must_be_instance_of MatchData
 			end
 
 		end

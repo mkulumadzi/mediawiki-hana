@@ -14,8 +14,8 @@ class Application
 		opts.separator "Specific options:"
 
 		opts.on("--text", "Render to a text file") { @params[:render_mode] = :text }
-		opts.on("--terminal", "Render to the terminal") { @params[:render_mode] = :terminal }
-		opts.on("--json", "Render to a json file") { @params[:render_mode] = :json }
+		opts.on("--json", "Render to json") { @params[:render_mode] = :json }
+		opts.on("--csv", "Render to csv") {@params[:render_mode] = :csv }
 
 		opts.on("-o", "--output [FILENAME]", "Output to a file") { |f| @params[:output_file] = f }
 
@@ -23,9 +23,6 @@ class Application
 			puts opts
 			exit
 		end
-		# parser.on('-o') do
-		# 	parser.on('data/output.txt') { @params[:output_file] = 'data/output.txt' }
-		# end
 
 		@search_string = opts.parse(argv)[0]
 
@@ -36,63 +33,70 @@ class Application
 		@wiki_query = MediaWiki::Query.new(@search_string)
 	end
 
-	# For each page, print the search string, title andshort summary
 	def render
+		output(render_content)
+	end
+
+	def render_content
 
 		case @params[:render_mode]
-		when :terminal
-			render_to_terminal
 		when :text
 			render_to_text
 		when :json
 			render_to_json
+		when :csv
+			render_to_csv
 		else
 			raise ArgumentError, "Invalid render mode"
 		end	
 
 	end
 
-	def render_to_terminal
+	def output(content)
 
-		@wiki_query.pages.each do |key, page|
-			puts "Search string: #{key}"
-			puts "Page title returned: #{page.title}" 
-			puts "Summary: #{page.summary}\n\n"
+		if params[:output_file]
+			create_output_file(content)
+		else
+			puts content
 		end
 
-		return nil
+	end
 
+	def create_output_file(content)
+		f = File.new(@params[:output_file], 'w')
+		f << content
+		f.close
 	end
 
 	def render_to_text
 
-		f = File.new(@params[:output_file], 'w')
+		render_content = ""
 
 		@wiki_query.pages.each do |key, page|
-			f << "Search string: #{key}\n"
-			f << "Page title returned: #{page.title}\n" 
-			f << "Summary: #{page.summary}\n\n"
+			render_content << "Search string: #{key}\n"
+			render_content << "Page title returned: #{page.title}\n" 
+			render_content << "Summary: #{page.summary}\n\n"
 		end
 
-		f.close
+		render_content
 
 	end
 
 	def render_to_json
-		f = File.new(@params[:output_file], 'w')
-		f << @wiki_query.query_result
-		f.close
+		@wiki_query.query_result
+	end
+
+	def render_to_csv
+
+		render_content = ""
+		render_content << "'Search string', 'Page title returned', 'Summary'\n"
+
+		@wiki_query.pages.each do |key, page|
+			render_content << "'#{key}', '#{page.title}', '#{page.summary}'\n"
+		end
+		
+		render_content
+
 	end
 
 end
-
-# Placeholder pseudo code
-
-## Enter one more more search strings
-## Get the pages back, store them
-
-## Render the pages in a few different ways
-## Save a .csv file with the search string, title and summary
-## Print the search string, title and summary to the command line
-## Save a .json file with the full query content
-## Save a .txt file with the full text content, one page at a time
