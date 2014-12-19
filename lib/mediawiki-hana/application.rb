@@ -1,4 +1,5 @@
 require 'optparse'
+require 'json'
 
 class Application
 
@@ -12,6 +13,8 @@ class Application
 		opts.banner = "Usage: QUERY [options]"
 		opts.separator ""
 		opts.separator "Specific options:"
+
+		enforce_mutually_exclusive_rendering_modes(argv)
 
 		opts.on("--text", "Render to a text file") { @params[:render_mode] = :text }
 		opts.on("--json", "Render to json") { @params[:render_mode] = :json }
@@ -27,6 +30,17 @@ class Application
 		@search_string = opts.parse(argv)[0]
 
 	end
+
+
+	def enforce_mutually_exclusive_rendering_modes(argv)
+		render_opts = ["--text", "--json", "--csv"]
+		num_rendering_options = 0
+
+		argv.each { |a| num_rendering_options += 1 if render_opts.index(a) }
+
+		raise ArgumentError, "Please specify a single rendering mode" unless num_rendering_options <= 1
+	end
+
 
 	def initialize(argv)
 		parse_options(argv)
@@ -46,8 +60,6 @@ class Application
 			render_to_json
 		when :csv
 			render_to_csv
-		else
-			raise ArgumentError, "Invalid render mode"
 		end	
 
 	end
@@ -83,7 +95,7 @@ class Application
 	end
 
 	def render_to_json
-		@wiki_query.query_result
+		@wiki_query.query_result.to_json
 	end
 
 	def render_to_csv

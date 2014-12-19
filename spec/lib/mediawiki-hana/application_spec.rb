@@ -10,6 +10,14 @@ describe Application do
 
 	end
 
+	before do
+		VCR.insert_cassette 'wiki_query', :record => :new_episodes
+	end
+
+	after do
+		VCR.eject_cassette
+	end
+
 	describe "parse options" do
 
 		it "must store a hash of the parameters" do
@@ -33,6 +41,16 @@ describe Application do
 				application = Application.new(['Main Page', '--csv'])
 				application.params[:render_mode].must_equal :csv
 			end
+
+			it "must raise an exception if multiple rendering modes are given" do
+				assert_raises ArgumentError do
+					Application.new(['Main Page', '--text', '--csv'])
+				end
+			end
+
+		end
+
+		describe "output file" do
 
 			it "must set the output file if the -o option is given" do
 				application = Application.new(['Main Page', '--text', '-o', 'data/output.txt'])
@@ -91,114 +109,72 @@ describe Application do
 
 	end
 
-	describe "rendering a single page" do
+	describe "rendering" do
 
-		describe "render to the terminal" do
+		describe "render a single page to text" do
 
 			let(:application) { Application.new(['Main Page', '--text'])}
 
 			before do
-				$stdout = StringIO.new
-				application.render
-				@result = $stdout.string.split("\n")
+				@rendered_lines = application.render_to_text.split("\n")
 			end
 
-			it "must have a render method" do
-				application.must_respond_to :render
+			it "must render the search string in the first line" do
+				@rendered_lines[0].must_equal "Search string: Main Page"
 			end
 
-			it "must have an output method" do
-				application.must_respond_to :output
+			it "must render the page title on the second line" do
+				@rendered_lines[1].must_equal "Page title returned: Main Page"
 			end
 
-			it "must print the search string on the first line" do
-				@result[0].must_equal "Search string: Main Page"
-			end
-
-			it "must print the page title on the second line" do
-				@result[1].must_equal "Page title returned: Main Page"
-			end
-
-			# Summary has a few extra new lines
-			it "must print the page summary" do
-				@result[4].must_equal "Welcome to Wikipedia,"
+			it "must render the page summary" do
+				@rendered_lines[4].must_equal "Welcome to Wikipedia,"
 			end
 
 		end
 
-		describe "render to a text file" do
+		describe "render multiple pages to text" do
 
-			let(:application) { Application.new(['Main Page', '--text', '-o', 'data/output.txt']) }
-
-			before do
-				application.render
-				@result = []
-
-				File.open('data/output.txt', 'r') do |f|
-					f.each_line do |line|
-						@result << line.chomp
-					end
-				end
-
-			end
-
-			after do
-				File.delete('data/output.txt')
-			end
-
-			it "must print the search string on the first line" do
-				@result[0].must_equal "Search string: Main Page"
-			end
-
-			it "must print the page title on the second line" do
-				@result[1].must_equal "Page title returned: Main Page"
-			end
-
-			# Summary has a few extra new lines
-			it "must print the page summary" do
-				@result[4].must_equal "Welcome to Wikipedia,"
-			end
-			
-		end
-
-		describe "render to a json file" do
-
-			let(:application) { Application.new(['Main Page', '--json', '-o', 'data/output.json']) }
+			let(:application) { Application.new(['a|b|c', '--text'])}
 
 			before do
-				application.render
-				File.open('data/output.json', 'r') { |f| @result = f.read }
+				@result = application.render_to_text
 			end
 
-			after do
-				File.delete('data/output.json')
+			it "must render the first page" do
+				@result.index('Search string: a').must_be_instance_of Fixnum
 			end
 
-			# To Do: Do a better job of testing for JSON...
-			it "must save the query result to the file" do
-				@result.index("{").must_be_instance_of Fixnum
+			it "must render the second page" do
+				@result.index('Search string: b').must_be_instance_of Fixnum
+			end
+
+			it "must render the last page" do
+				@result.index('Search string: c').must_be_instance_of Fixnum
 			end
 
 		end
 
-		describe "render to a csv file" do
+		describe "render a single page to json" do
 
-			let(:application) { Application.new(['Main Page', '--csv', '-o', 'data/output.csv']) }
+			let(:application) { Application.new(['Main Page', '--json'])}
 
 			before do
-				application.render
-				@result = []
-
-				File.open('data/output.csv', 'r') do |f|
-					f.each_line do |line|
-						@result << line.chomp
-					end
-				end
-
+				@result = application.render_to_json
 			end
 
-			after do
-				File.delete('data/output.csv')
+			it "must render the content to json" do
+				JSON.parse(@result).must_be_instance_of Hash
+			end
+
+		end
+
+		describe "render a single page to csv" do
+
+			let(:application) { Application.new(['Main Page', '--csv'])}
+
+			before do
+				@result = application.render_to_csv.split("\n")
 			end
 
 			it "must include the column headers on the first line" do
@@ -207,6 +183,59 @@ describe Application do
 
 			it "must list the search string, title and the summary for the page" do
 				@result[1].match(/Main Page(.*)Main Page/).must_be_instance_of MatchData
+			end
+
+		end
+
+		describe "render multiple pages to csv" do
+
+			let(:application) { Application.new(['foo|bar|camp', '--csv'])}
+
+			before do
+				@result = application.render_to_csv
+			end
+
+			it "must render the first page" do
+				@result.index('foo').must_be_instance_of Fixnum
+			end
+
+			it "must render the second page" do
+				@result.index('bar').must_be_instance_of Fixnum
+			end
+
+		end
+
+		describe "output to the terminal" do
+
+			let(:application) { Application.new(['Main Page', '--text'])}
+
+			before do
+				$stdout = StringIO.new
+				application.render
+				@result = $stdout.string
+			end
+
+			it "must print the rendered content to the terminal" do
+				@result.must_equal application.render_to_text
+			end
+
+		end
+
+		describe "output to a file" do
+
+			let(:application) { Application.new(['Main Page', '--text', '-o', 'data/output.txt'])}
+
+			before do
+				application.render
+
+				File.open('data/output.txt', 'r') do |f|
+					@result = f.read
+				end
+
+			end
+
+			it "must save the rendered content in the file" do
+				@result.must_equal application.render_to_text
 			end
 
 		end

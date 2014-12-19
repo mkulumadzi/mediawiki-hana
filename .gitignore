@@ -33,5 +33,6 @@ build/
 # unless supporting rvm < 1.11.0 or doing something fancy, ignore this:
 .rvmrc
 
-# Ignore data files
+# Ignore data files and fixtures
 /data/*
+/spec/fixtures/mediawiki_hana_cassettes/*
