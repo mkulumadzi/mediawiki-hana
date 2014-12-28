@@ -22,6 +22,8 @@ class Application
 
 		opts.on("-o", "--output [FILENAME]", "Output to a file") { |f| @params[:output_file] = f }
 
+		opts.on("-i", "--input [FILENAME]", "Source file for search queries") { |f| @params[:input_file] = f}
+
 		opts.on_tail("-h", "--help", "Show this message") do
 			puts opts
 			exit
@@ -29,8 +31,41 @@ class Application
 
 		@search_string = opts.parse(argv)[0]
 
+		if @params[:input_file]
+			process_input_file
+		end
+
 	end
 
+	def process_input_file
+		input_file = File.open(@params[:input_file], 'r')
+		file_terms = convert_contents_to_search_string(input_file.read)
+		add_terms(file_terms)
+	end
+
+	def add_terms(terms)
+		if @search_string == nil
+			@search_string = terms
+		else
+			@search_string << "|" + terms
+		end
+	end
+
+	def convert_contents_to_search_string(contents)
+		contents = substitute_new_lines_and_commas(contents)
+		contents = remove_extra_bars(contents)
+		contents
+	end
+
+	def substitute_new_lines_and_commas(contents)
+		contents.gsub(/[,+\n+]+/, "|")
+	end
+
+	def remove_extra_bars(contents)
+		contents = contents.gsub(/\A\|/, "")
+		contents = contents.gsub(/\|\Z/, "")
+		contents
+	end
 
 	def enforce_mutually_exclusive_rendering_modes(argv)
 		render_opts = ["--text", "--json", "--csv"]
@@ -40,7 +75,6 @@ class Application
 
 		raise ArgumentError, "Please specify a single rendering mode" unless num_rendering_options <= 1
 	end
-
 
 	def initialize(argv)
 		parse_options(argv)

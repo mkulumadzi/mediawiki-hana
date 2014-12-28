@@ -50,6 +50,94 @@ describe Application do
 
 		end
 
+		describe "input file" do
+
+			before do
+
+				File.new('data/input.csv', 'w')
+
+				File.open('data/input.csv', 'w') do |f|
+					f << 'Main Page'
+				end
+
+				@application = Application.new(['-i', 'data/input.csv', '--text'])
+			end
+
+			after do
+				File.delete('data/input.csv')
+			end
+
+			it "must set the input file if the -i option is given" do
+				@application.params[:input_file].must_equal 'data/input.csv'
+			end
+
+			it "must get the query terms from the input file" do
+				@application.search_string.must_equal "Main Page"
+			end
+
+		end
+
+		describe "process csv as input file" do
+
+			before do
+
+				File.new('data/input.csv', 'w')
+
+				File.open('data/input.csv', 'w') do |f|
+
+					f << ",foo,\n"
+					f << "bar,\n,\n"
+					f << "c,"
+
+				end
+
+				@contents = ",foo,\nbar,\n,\nc,"
+
+				@substituted_contents = "|foo|bar|c|"
+
+				@application = Application.new(['-i', 'data/input.csv', '--text'])
+			end
+
+			it "must substitute new lines and commas with bars" do
+				@application.substitute_new_lines_and_commas(@contents).must_equal "|foo|bar|c|"
+			end
+
+			it "must remove leading and trailing bars" do
+				@application.remove_extra_bars(@substituted_contents).must_equal "foo|bar|c"
+			end
+
+			it "must replace commas and carriage returns in the input file with bars" do
+				@application.convert_contents_to_search_string(@contents).must_equal 'foo|bar|c'
+			end
+
+			it "must store the contents of the processed file as the search string" do
+				@application.search_string.must_equal 'foo|bar|c'
+			end
+
+		end
+
+		describe "get search terms from input file and command line" do
+
+			before do
+
+				File.new('data/input.csv', 'w')
+
+				File.open('data/input.csv', 'w') do |f|
+
+					f << "foo,\n"
+					f << "bar,\n"
+
+				end
+
+				@application = Application.new(['c', '-i', 'data/input.csv', '--text'])
+			end
+
+			it "must add terms from the file to the terms from the command line" do
+				@application.search_string.must_equal 'c|foo|bar'
+			end
+
+		end
+
 		describe "output file" do
 
 			it "must set the output file if the -o option is given" do
@@ -95,7 +183,7 @@ describe Application do
 
 	end
 
-	describe "get MediaQuery" do
+	describe "get MediaWiki Query" do
 
 		let(:application) {Application.new(['Main Page', '--text'])}
 
