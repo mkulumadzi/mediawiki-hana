@@ -199,6 +199,79 @@ describe Application do
 
 	describe "rendering" do
 
+		describe "select which data to render" do
+
+			let(:application) { Application.new(['foo|bar|c', '--text', '-st'])}
+
+			before do
+				@data_to_render = [:search_term, :title]
+				@foo_site = application.wiki_query.pages["foo"]
+				@foo_content = {
+					"Search term:" => "foo",
+					"Title:" => "Foobar"
+				}
+				@content_to_render = [
+					{"Search term:" => "bar", "Title:" => "Bar"},
+					{"Search term:" => "c", "Title:" => "C"},
+					{"Search term:" => "foo", "Title:" => "Foobar"}
+				]
+			end
+
+			it "must record which data to render" do
+				application.params[:data_to_render].must_equal @data_to_render
+			end
+
+			it "must convert data symbols to headers" do
+				application.convert_symbol_to_header(:search_term).must_equal "Search term:"
+			end
+
+			it "must send the symbols for data to render to the page object as a method call" do
+				application.get_content_for_page_and_symbol('foo', @foo_site, :title).must_equal @foo_site.title
+			end
+
+			it "must return the original search term" do
+				application.get_content_for_page_and_symbol('foo', @foo_site, :search_term).must_equal 'foo'
+			end
+
+			it "must get all content needed for a page" do
+				application.get_content_needed('foo', @foo_site).must_equal @foo_content
+			end
+
+			it "must create a hash with the content to render for each page" do
+				application.content_to_render.must_equal @content_to_render
+			end
+
+			describe "render multiple values" do
+
+				let(:application) { Application.new(['foo|bar|c', '--text', '-stdf'])}
+
+				before do
+					@data_to_render = [:search_term, :title, :summary, :full_text]
+				end
+
+				it "must get all of the items to render" do
+					application.params[:data_to_render].must_equal @data_to_render
+				end
+
+			end
+
+			describe "default rendering" do
+
+				let(:application) { Application.new(['foo|bar|c', '--text'])}
+
+				before do
+					@data_to_render = [:search_term, :title, :summary]
+				end
+
+				it "must render the search term, title and summary by default" do
+					application.get_default_items_to_render_if_non_specified
+					application.params[:data_to_render].must_equal @data_to_render
+				end
+
+			end
+
+		end
+
 		describe "render a single page to text" do
 
 			let(:application) { Application.new(['Main Page', '--text'])}
@@ -208,11 +281,11 @@ describe Application do
 			end
 
 			it "must render the search string in the first line" do
-				@rendered_lines[0].must_equal "Search string: Main Page"
+				@rendered_lines[0].must_equal "Search term: Main Page"
 			end
 
 			it "must render the page title on the second line" do
-				@rendered_lines[1].must_equal "Page title returned: Main Page"
+				@rendered_lines[1].must_equal "Title: Main Page"
 			end
 
 			it "must render the page summary" do
@@ -230,15 +303,15 @@ describe Application do
 			end
 
 			it "must render the first page" do
-				@result.index('Search string: a').must_be_instance_of Fixnum
+				@result.index('Search term: a').must_be_instance_of Fixnum
 			end
 
 			it "must render the second page" do
-				@result.index('Search string: b').must_be_instance_of Fixnum
+				@result.index('Search term: b').must_be_instance_of Fixnum
 			end
 
 			it "must render the last page" do
-				@result.index('Search string: c').must_be_instance_of Fixnum
+				@result.index('Search term: c').must_be_instance_of Fixnum
 			end
 
 		end
@@ -265,8 +338,22 @@ describe Application do
 				@result = application.render_to_csv.split("\n")
 			end
 
+			it "must create an array of the headers" do
+				application.get_array_of_headers.must_equal ["Search term:", "Title:", "Summary:"]
+			end
+
+			it "must create an array of values from a hash" do
+				example_hash = {"Search term:" => "Main Page", "Title:" => "Main Page"}
+				application.get_array_of_content(example_hash).must_equal ["Main Page", "Main Page"]
+			end
+
+			it "must create a csv row from an array" do
+				array = application.get_array_of_headers
+				application.create_csv_row(array).must_equal "'Search term:', 'Title:', 'Summary:'\n"
+			end
+
 			it "must include the column headers on the first line" do
-				@result[0].must_equal "'Search string', 'Page title returned', 'Summary'"
+				@result[0].must_equal "'Search term:', 'Title:', 'Summary:'"
 			end
 
 			it "must list the search string, title and the summary for the page" do
