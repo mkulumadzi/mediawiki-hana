@@ -1,11 +1,11 @@
 require_relative '../../spec_helper'
 
-describe Application do
+describe Hana::Application do
 
 	describe "default attributes" do
 
 		it "must include the Mediawiki methods" do
-			Application.must_include MediaWiki
+			Hana::Application.must_include MediaWiki
 		end
 
 	end
@@ -21,30 +21,30 @@ describe Application do
 	describe "parse options" do
 
 		it "must store a hash of the parameters" do
-			application = Application.new(['Main Page', '--text'])
+			application = Hana::Application.new(['Main Page', '--text'])
 			application.params.must_be_instance_of Hash
 		end
 
 		describe "render mode" do
 
 			it "must set the mode to :text if the --text option is given" do
-				application = Application.new(['Main Page', '--text'])
+				application = Hana::Application.new(['Main Page', '--text'])
 				application.params[:render_mode].must_equal :text
 			end
 
 			it "must set the mode to :json if the --json option is given" do
-				application = Application.new(['Main Page', '--json'])
+				application = Hana::Application.new(['Main Page', '--json'])
 				application.params[:render_mode].must_equal :json
 			end
 
 			it "must set the mode to :csv if the --csv option is given" do
-				application = Application.new(['Main Page', '--csv'])
+				application = Hana::Application.new(['Main Page', '--csv'])
 				application.params[:render_mode].must_equal :csv
 			end
 
 			it "must raise an exception if multiple rendering modes are given" do
 				assert_raises ArgumentError do
-					Application.new(['Main Page', '--text', '--csv'])
+					Hana::Application.new(['Main Page', '--text', '--csv'])
 				end
 			end
 
@@ -60,7 +60,7 @@ describe Application do
 					f << 'Main Page'
 				end
 
-				@application = Application.new(['-i', 'data/input.csv', '--text'])
+				@application = Hana::Application.new(['-i', 'data/input.csv', '--text'])
 			end
 
 			after do
@@ -95,7 +95,7 @@ describe Application do
 
 				@substituted_contents = "|foo|bar|c|"
 
-				@application = Application.new(['-i', 'data/input.csv', '--text'])
+				@application = Hana::Application.new(['-i', 'data/input.csv', '--text'])
 			end
 
 			it "must substitute new lines and commas with bars" do
@@ -129,7 +129,7 @@ describe Application do
 
 				end
 
-				@application = Application.new(['c', '-i', 'data/input.csv', '--text'])
+				@application = Hana::Application.new(['c', '-i', 'data/input.csv', '--text'])
 			end
 
 			it "must add terms from the file to the terms from the command line" do
@@ -141,13 +141,55 @@ describe Application do
 		describe "output file" do
 
 			it "must set the output file if the -o option is given" do
-				application = Application.new(['Main Page', '--text', '-o', 'data/output.txt'])
+				application = Hana::Application.new(['Main Page', '--text', '-o', 'data/output.txt'])
 				application.params[:output_file].must_equal 'data/output.txt'
 			end
 
 			it "must set the output file if the --output option is given" do
-				application = Application.new(['Main Page', '--text', '--output', 'data/output.txt'])
+				application = Hana::Application.new(['Main Page', '--text', '--output', 'data/output.txt'])
 				application.params[:output_file].must_equal 'data/output.txt'
+			end
+
+		end
+
+		describe "render the search term for each page" do
+
+			let(:application) { Hana::Application.new(['foo|bar|c', '--text', '-s'])}
+
+			before do
+				@data_to_render = [:search_term]
+			end
+
+			it "must record which data to render" do
+				application.params[:data_to_render].must_equal @data_to_render
+			end
+
+		end
+
+		describe "render multiple values" do
+
+			let(:application) { Hana::Application.new(['foo|bar|c', '--text', '-stdf'])}
+
+			before do
+				@data_to_render = [:search_term, :title, :summary, :full_text]
+			end
+
+			it "must get all of the items to render" do
+				application.params[:data_to_render].must_equal @data_to_render
+			end
+
+		end
+
+		describe "use default rendering values" do
+
+			let(:application) { Hana::Application.new(['foo|bar|c', '--text'])}
+
+			before do
+				@data_to_render = [:search_term, :title, :summary]
+			end
+
+			it "must render the search term, title and summary by default" do
+				application.params[:data_to_render].must_equal @data_to_render
 			end
 
 		end
@@ -160,7 +202,7 @@ describe Application do
 
 			it "must show the help text if the --help option is given" do
 				begin
-					Application.new(['--help'])
+					Hana::Application.new(['--help'])
 				rescue SystemExit
 				end
 				$stdout.string.split("\n")[0].must_equal "Usage: QUERY [options]"
@@ -168,7 +210,7 @@ describe Application do
 
 			it "must show the help text if the --h option is given" do
 				begin
-					Application.new(['--h'])
+					Hana::Application.new(['--h'])
 				rescue SystemExit
 				end
 				$stdout.string.split("\n")[0].must_equal "Usage: QUERY [options]"
@@ -177,7 +219,7 @@ describe Application do
 		end
 
 		it "must store the remaining parameters as the search string" do
-			application = Application.new(['Main Page', '--text'])
+			application = Hana::Application.new(['Main Page', '--text'])
 			application.search_string.must_equal "Main Page"
 		end
 
@@ -185,7 +227,7 @@ describe Application do
 
 	describe "get MediaWiki Query" do
 
-		let(:application) {Application.new(['Main Page', '--text'])}
+		let(:application) { Hana::Application.new(['Main Page', '--text'])}
 
 		it "must get a valid MediaWiki query object" do
 			application.wiki_query.must_be_instance_of MediaWiki::Query
@@ -199,218 +241,83 @@ describe Application do
 
 	describe "rendering" do
 
-		describe "select which data to render" do
+		describe "render a plain text result" do
 
-			let(:application) { Application.new(['foo|bar|c', '--text', '-st'])}
+			let(:application) { Hana::Application.new(['Main Page', '--text'])}
 
-			before do
-				@data_to_render = [:search_term, :title]
-				@foo_site = application.wiki_query.pages["foo"]
-				@foo_content = {
-					"Search term:" => "foo",
-					"Title:" => "Foobar"
-				}
-				@content_to_render = [
-					{"Search term:" => "bar", "Title:" => "Bar"},
-					{"Search term:" => "c", "Title:" => "C"},
-					{"Search term:" => "foo", "Title:" => "Foobar"}
-				]
+			it "must create a new plain text object to render" do
+				application.render_object.must_be_instance_of Hana::PlainText
 			end
 
-			it "must record which data to render" do
-				application.params[:data_to_render].must_equal @data_to_render
+		end
+
+		describe "render a csv result" do
+
+			let(:application) { Hana::Application.new(['Main Page', '--csv'])}
+
+			it "must create a new csv object to render" do
+				application.render_object.must_be_instance_of Hana::CSV
 			end
 
-			it "must convert data symbols to headers" do
-				application.convert_symbol_to_header(:search_term).must_equal "Search term:"
+		end
+
+		describe "render a json result" do
+
+			let(:application) { Hana::Application.new(['Main Page', '--json'])}
+
+			it "must create a new json object to render" do
+				application.render_object.must_be_instance_of Hana::JsonOutput
 			end
 
-			it "must send the symbols for data to render to the page object as a method call" do
-				application.get_content_for_page_and_symbol('foo', @foo_site, :title).must_equal @foo_site.title
+		end
+
+		describe "output rendered content" do
+
+			let(:wiki_query) { MediaWiki::Query.new('Main Page')}
+			let(:plain_text) { Hana::PlainText.new(wiki_query, [:search_term, :title, :summary])}
+
+			describe "output to the termianl" do
+
+				let(:application) { Hana::Application.new(['Main Page', '--text'])}
+
+				it "must print the rendered content to the terminal" do
+					$stdout = StringIO.new
+					application.render
+
+					$stdout.string.must_equal plain_text.render
+				end
+
 			end
 
-			it "must return the original search term" do
-				application.get_content_for_page_and_symbol('foo', @foo_site, :search_term).must_equal 'foo'
-			end
+			describe "output to a file" do
 
-			it "must get all content needed for a page" do
-				application.get_content_needed('foo', @foo_site).must_equal @foo_content
-			end
-
-			it "must create a hash with the content to render for each page" do
-				application.content_to_render.must_equal @content_to_render
-			end
-
-			describe "render multiple values" do
-
-				let(:application) { Application.new(['foo|bar|c', '--text', '-stdf'])}
+				let(:application) { Hana::Application.new(['Main Page', '--text', '-o', 'data/output.txt'])}
 
 				before do
-					@data_to_render = [:search_term, :title, :summary, :full_text]
+					@render_object = application.render_object
 				end
 
-				it "must get all of the items to render" do
-					application.params[:data_to_render].must_equal @data_to_render
+				it "must create an output file with the rendered content" do
+					application.create_output_file(@render_object.render)
+
+					File.open('data/output.txt', 'r') do |f|
+						@result = f.read
+					end
+
+					@result.must_equal plain_text.render
 				end
 
-			end
+				it "must create this file when the render function is called" do
+					application.render
 
-			describe "default rendering" do
+					File.open('data/output.txt', 'r') do |f|
+						@result = f.read
+					end
 
-				let(:application) { Application.new(['foo|bar|c', '--text'])}
+					@result.must_equal plain_text.render
 
-				before do
-					@data_to_render = [:search_term, :title, :summary]
 				end
 
-				it "must render the search term, title and summary by default" do
-					application.get_default_items_to_render_if_non_specified
-					application.params[:data_to_render].must_equal @data_to_render
-				end
-
-			end
-
-		end
-
-		describe "render a single page to text" do
-
-			let(:application) { Application.new(['Main Page', '--text'])}
-
-			before do
-				@rendered_lines = application.render_to_text.split("\n")
-			end
-
-			it "must render the search string in the first line" do
-				@rendered_lines[0].must_equal "Search term: Main Page"
-			end
-
-			it "must render the page title on the second line" do
-				@rendered_lines[1].must_equal "Title: Main Page"
-			end
-
-			it "must render the page summary" do
-				@rendered_lines[4].must_equal "Welcome to Wikipedia,"
-			end
-
-		end
-
-		describe "render multiple pages to text" do
-
-			let(:application) { Application.new(['a|b|c', '--text'])}
-
-			before do
-				@result = application.render_to_text
-			end
-
-			it "must render the first page" do
-				@result.index('Search term: a').must_be_instance_of Fixnum
-			end
-
-			it "must render the second page" do
-				@result.index('Search term: b').must_be_instance_of Fixnum
-			end
-
-			it "must render the last page" do
-				@result.index('Search term: c').must_be_instance_of Fixnum
-			end
-
-		end
-
-		describe "render a single page to json" do
-
-			let(:application) { Application.new(['Main Page', '--json'])}
-
-			before do
-				@result = application.render_to_json
-			end
-
-			it "must render the content to json" do
-				JSON.parse(@result).must_be_instance_of Hash
-			end
-
-		end
-
-		describe "render a single page to csv" do
-
-			let(:application) { Application.new(['Main Page', '--csv'])}
-
-			before do
-				@result = application.render_to_csv.split("\n")
-			end
-
-			it "must create an array of the headers" do
-				application.get_array_of_headers.must_equal ["Search term:", "Title:", "Summary:"]
-			end
-
-			it "must create an array of values from a hash" do
-				example_hash = {"Search term:" => "Main Page", "Title:" => "Main Page"}
-				application.get_array_of_content(example_hash).must_equal ["Main Page", "Main Page"]
-			end
-
-			it "must create a csv row from an array" do
-				array = application.get_array_of_headers
-				application.create_csv_row(array).must_equal "'Search term:', 'Title:', 'Summary:'\n"
-			end
-
-			it "must include the column headers on the first line" do
-				@result[0].must_equal "'Search term:', 'Title:', 'Summary:'"
-			end
-
-			it "must list the search string, title and the summary for the page" do
-				@result[1].match(/Main Page(.*)Main Page/).must_be_instance_of MatchData
-			end
-
-		end
-
-		describe "render multiple pages to csv" do
-
-			let(:application) { Application.new(['foo|bar|camp', '--csv'])}
-
-			before do
-				@result = application.render_to_csv
-			end
-
-			it "must render the first page" do
-				@result.index('foo').must_be_instance_of Fixnum
-			end
-
-			it "must render the second page" do
-				@result.index('bar').must_be_instance_of Fixnum
-			end
-
-		end
-
-		describe "output to the terminal" do
-
-			let(:application) { Application.new(['Main Page', '--text'])}
-
-			before do
-				$stdout = StringIO.new
-				application.render
-				@result = $stdout.string
-			end
-
-			it "must print the rendered content to the terminal" do
-				@result.must_equal application.render_to_text
-			end
-
-		end
-
-		describe "output to a file" do
-
-			let(:application) { Application.new(['Main Page', '--text', '-o', 'data/output.txt'])}
-
-			before do
-				application.render
-
-				File.open('data/output.txt', 'r') do |f|
-					@result = f.read
-				end
-
-			end
-
-			it "must save the rendered content in the file" do
-				@result.must_equal application.render_to_text
 			end
 
 		end
