@@ -41,9 +41,27 @@ module Hana
 		def get_content_for_page_and_symbol(key, page, symbol)
 			if symbol == :search_term
 				key
+			elsif page_has_method(page, :missing)
+				"Page not found"
+			elsif page_has_method(page, :invalid)
+				"Invalid search string"
 			else
 				page.send(symbol)
 			end
+		end
+
+		def page_has_method(page, symbol)
+
+			@has_method = true
+
+			begin
+				page.send(symbol)
+			rescue NoMethodError
+				@has_method = false
+			end
+
+			@has_method
+
 		end
 
 	end

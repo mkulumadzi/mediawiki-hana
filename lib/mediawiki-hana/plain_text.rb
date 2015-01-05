@@ -13,6 +13,7 @@ module Hana
 				page_content.each do |key, value|
 					render_content << "#{key} #{value}\n"
 				end
+				render_content << "\n"
 			end
 
 			render_content

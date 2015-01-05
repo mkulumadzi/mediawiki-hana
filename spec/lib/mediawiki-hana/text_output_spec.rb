@@ -65,4 +65,45 @@ describe Hana::TextOutput do
 
 	end
 
+	describe "handle missing pages" do
+
+		let(:wiki_query) { MediaWiki::Query.new('xfg|Talk:|foo')}
+		let(:text_output) { Hana::TextOutput.new(wiki_query, [:search_string, :title])}
+
+		before do
+			@missing_page = wiki_query.pages["xfg"]
+		end
+
+		it "must indicate that the 'xfg' page is missing" do
+			missing_page = wiki_query.pages["xfg"]
+			text_output.page_has_method(missing_page, :missing).must_equal true
+		end
+
+		it "must indicate that the 'Talk:' page is invalid" do
+			invalid_page = wiki_query.pages["Talk:"]
+			text_output.page_has_method(invalid_page, :invalid).must_equal true
+		end
+
+		it "must not indicate that the 'foo' page is missing" do
+			valid_page = wiki_query.pages["foo"]
+			text_output.page_has_method(valid_page, :missing).must_equal false
+		end
+
+		it "must not indicate that the 'foo' page is invalid" do
+			valid_page = wiki_query.pages["foo"]
+			text_output.page_has_method(valid_page, :invalid).must_equal false
+		end
+
+		it "must return an indication that the page is missing" do
+			missing_page = wiki_query.pages["xfg"]
+			text_output.get_content_for_page_and_symbol('xfg', missing_page, :title).must_equal "Page not found"
+		end
+
+		it "must return an indication that the page is invalid" do
+			invalid_page = wiki_query.pages["Talk:"]
+			text_output.get_content_for_page_and_symbol('Talk:', invalid_page, :title).must_equal "Invalid search string"
+		end
+
+	end
+
 end
